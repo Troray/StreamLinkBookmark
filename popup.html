@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>抖音直播直链解析</title>
+  <link href="lib/bootstrap.min.css" rel="stylesheet">
+  <script src="lib/bootstrap.bundle.min.js"></script>
+  <style>
+    body {
+      width: 450px;
+      padding: 15px;
+    }
+    .input-group {
+      position: relative;
+      box-shadow: 0 0 0 1px #dee2e6;
+      border-radius: 4px;
+      transition: box-shadow 0.15s ease-in-out;
+    }
+    .input-group:focus-within {
+      box-shadow: 0 0 0 2px #7caef8;
+    }
+    .input-group .form-control {
+      border: none;
+      box-shadow: none !important;
+    }
+    .input-group .btn {
+      border: none;
+      z-index: 1;
+    }
+    .input-group .form-control:focus + .btn {
+      border: none;
+    }
+    .copy-icon {
+      cursor: pointer;
+      margin-left: 5px;
+    }
+    .stream-link {
+      word-break: break-all;
+      font-size: 0.85rem;
+    }
+    .stream-link .flex-grow-1 {
+      display: block;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+    .copy-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(33, 37, 41, 0.85);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+    .copy-toast.show {
+      opacity: 1;
+    }
+    .nav-tabs .nav-link {
+      padding: 0.5rem 1rem;
+      font-size: 14px;
+    }
+    #checkAllStatus.loading {
+      position: relative;
+      color: transparent;
+    }
+    #checkAllStatus.loading .spinner-border {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .status-dot,
+    .status-live,
+    .status-offline,
+    .status-error {
+      display: none;
+    }
+    
+    .status-badge {
+      font-size: 14px;
+      line-height: 1;
+      margin-left: 8px;
+    }
+    /* 添加自定义tooltip样式 */
+    .custom-tooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .status-badge {
+      position: relative;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="parse-tab" data-bs-toggle="tab" data-bs-target="#parse" type="button" role="tab" aria-controls="parse" aria-selected="true">直播解析</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="favorites-tab" data-bs-toggle="tab" data-bs-target="#favorites" type="button" role="tab" aria-controls="favorites" aria-selected="false">我的收藏</button>
+      </li>
+    </ul>
+    <div class="tab-content" id="mainTabContent">
+      <div class="tab-pane fade show active" id="parse" role="tabpanel" aria-labelledby="parse-tab">
+        <div class="input-group mb-3">
+          <input type="text" id="roomInput" class="form-control" placeholder="请输入房间号或直播间链接" autocomplete="off">
+          <button class="btn btn-primary" id="parseBtn">解析</button>
+        </div>
+        <div id="result" class="d-none">
+          <div class="mb-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <img id="streamerAvatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
+              <a id="streamerName" href="#" target="_blank" class="text-decoration-none" style="color: #333;"></a>
+              <span class="ms-2 badge bg-success" id="userCount"></span>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" id="addToFavorites">收藏</button>
+          </div>
+          <div class="mb-2">
+            <strong>直播标题：</strong>
+            <span id="streamTitle"></span>
+          </div>
+          <div class="mb-2">
+            <strong>直播流地址：</strong>
+          </div>
+          <div id="streamLinks" class="list-group">
+          </div>
+        </div>
+        <div id="error" class="alert alert-danger d-none" role="alert"></div>
+      </div>
+      <div class="tab-pane fade" id="favorites" role="tabpanel" aria-labelledby="favorites-tab">
+        <div class="d-flex justify-content-end mb-2">
+          <button class="btn btn-outline-primary btn-sm py-1" id="checkAllStatus" style="font-size: 12px;">
+            <span class="check-status-text">检测直播状态</span>
+            <span class="spinner-border spinner-border-sm d-none" role="status" style="width: 0.8rem; height: 0.8rem;"></span>
+          </button>
+        </div>
+        <div id="favoritesList" class="list-group">
+          <!-- 常用直播间列表将通过JavaScript动态添加 -->
+        </div>
+        <div id="noFavorites" class="text-center text-muted mt-3 d-none">
+          <p>暂无收藏</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 添加开发者信息 -->
+    <!-- <div class="text-center mt-3" style="font-size: 12px; color: #6c757d;">
+      <span>开发者：</span>
+      <a href="https://github.com/你的用户名" target="_blank" style="color: inherit; text-decoration: none;">
+        你的名字
+      </a>
+      <span class="mx-1">|</span>
+      <a href="https://github.com/你的用户名/项目名" target="_blank" style="color: inherit; text-decoration: none;">
+        GitHub
+      </a>
+    </div> -->
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -71,9 +71,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
           body: |
-            抖音直播直链解析浏览器扩展 ${{ github.ref }} 版本
+            抖音直播直链解析浏览器扩展 `${{ github.ref_name }}` 版本
             
             ### 安装说明
             - Chrome版本: 下载douyin-live-parser-chrome.zip，解压后在扩展管理页面通过"加载已解压的扩展程序"安装

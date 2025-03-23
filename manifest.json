@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "抖音直播直链解析",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "解析抖音直播间的视频直链地址",
   "author": "Troray",
   "homepage_url": "https://github.com/Troray/StreamLinkBookmark",

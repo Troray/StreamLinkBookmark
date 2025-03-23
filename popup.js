@@ -1,10 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
   try {
-    console.log('初始化开始...'); // 调试日志
-    
     // 获取所有tab元素
     const tabElements = document.querySelectorAll('button[data-bs-toggle="tab"]');
-    console.log('找到tab元素:', tabElements.length); // 调试日志
 
     // 使用原生方式处理tab切换
     tabElements.forEach(tabEl => {
@@ -65,11 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 加载常用直播间
     function loadFavorites() {
-      console.log('加载我的收藏'); // 添加调试日志
       const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
       browserAPI.storage.local.get('favorites').then(result => {
         const favorites = result.favorites || [];
-        console.log('已保存的收藏列表:', favorites); // 添加调试日志
         
         favoritesList.innerHTML = '';
         if (favorites.length === 0) {
@@ -212,16 +207,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 添加到常用直播间
     async function addFavorite(roomInfo, originalRoomId) {
-      console.log('添加房间信息:', roomInfo, '原始房间号:', originalRoomId);
-      
       const favorite = {
-        roomId: originalRoomId, // 使用原始房间号
+        roomId: originalRoomId,
         nickname: roomInfo.owner.nickname,
         avatar: roomInfo.owner.avatar_thumb.url_list[0],
         secUid: roomInfo.owner.sec_uid
       };
-      
-      console.log('保存的收藏信息:', favorite);
       
       const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
       const result = await browserAPI.storage.local.get('favorites');
@@ -354,8 +345,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 修改parseRoom函数
     async function parseRoom(roomId) {
       try {
-        console.log('开始解析房间:', roomId);
-        
         // 补全URL显示
         const fullUrl = `https://live.douyin.com/${roomId}`;
         roomInput.value = fullUrl;

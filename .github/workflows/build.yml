@@ -1,0 +1,85 @@
+name: Build Extensions
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          npm install --global web-ext
+          
+      - name: Prepare Chrome version
+        run: |
+          mkdir chrome
+          cp -r icons popup.html popup.js content.js lib chrome/
+          if [ ! -f chrome/lib/bootstrap.min.css ] || [ ! -f chrome/lib/bootstrap.bundle.min.js ]; then
+            echo "Error: Bootstrap files not found in lib directory"
+            exit 1
+          fi
+          cat manifest.json | jq 'del(.browser_specific_settings)' > chrome/manifest.json
+          
+      - name: Build Chrome extension
+        run: |
+          cd chrome
+          zip -r ../chrome-extension.zip *
+          cd ..
+          mv chrome-extension.zip douyin-live-parser-chrome.zip
+          
+      - name: Prepare Firefox version  
+        run: |
+          mkdir firefox
+          cp -r icons popup.html popup.js content.js lib firefox/
+          cp manifest.json firefox/
+          
+      - name: Build Firefox extension
+        run: |
+          cd firefox
+          web-ext build --artifacts-dir ../
+          cd ..
+          mv web-ext-artifacts/*.zip douyin-live-parser.xpi
+          
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          
+      - name: Upload Chrome Extension
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./douyin-live-parser-chrome.zip
+          asset_name: douyin-live-parser-chrome.zip
+          asset_content_type: application/zip
+          
+      - name: Upload Firefox Extension  
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./douyin-live-parser.xpi
+          asset_name: douyin-live-parser.xpi
+          asset_content_type: application/x-xpinstall

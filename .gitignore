@@ -1,0 +1,8 @@
+node_modules/
+*.zip
+*.xpi
+web-ext-artifacts/
+.DS_Store
+# 确保不要忽略lib目录下的Bootstrap文件
+!lib/bootstrap.min.css
+!lib/bootstrap.bundle.min.js

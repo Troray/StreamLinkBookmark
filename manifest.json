@@ -1,13 +1,19 @@
 {
   "manifest_version": 3,
   "name": "抖音直播直链解析",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "解析抖音直播间的视频直链地址",
-  "author": "你的名字",
-  "homepage_url": "https://github.com/你的用户名/项目名",
+  "author": "Troray",
+  "homepage_url": "https://github.com/Troray/StreamLinkBookmark",
+  "developer": {
+    "name": "Troray",
+    "url": "https://github.com/Troray"
+  },
+  "short_name": "抖音直播直链解析",
+  "default_locale": "zh_CN",
   "browser_specific_settings": {
     "gecko": {
-      "id": "douyin-live@example.com",
+      "id": "douyin-live-parser@github.Troray",
       "strict_min_version": "109.0"
     }
   },

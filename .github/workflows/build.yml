@@ -52,7 +52,7 @@ jobs:
       - name: Build and Sign Firefox Extension
         run: |
           cd firefox
-          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=unlisted
+          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=listed
           mv web-ext-artifacts/*.xpi ../douyin-live-parser.xpi
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}

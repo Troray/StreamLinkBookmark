@@ -3,14 +3,15 @@ name: Build Extensions
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # 当推送v开头的tag时触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
       
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -19,31 +20,36 @@ jobs:
           
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
           npm install --global web-ext
           
       - name: Prepare Chrome version
         run: |
-          mkdir chrome
-          cp -r icons popup.html popup.js content.js lib chrome/
-          if [ ! -f chrome/lib/bootstrap.min.css ] || [ ! -f chrome/lib/bootstrap.bundle.min.js ]; then
-            echo "Error: Bootstrap files not found in lib directory"
-            exit 1
-          fi
+          mkdir -p chrome
+          # 复制所有必要文件
+          cp -r icons chrome/
+          cp -r lib chrome/
+          cp -r _locales chrome/
+          cp popup.html chrome/
+          cp popup.js chrome/
+          cp content.js chrome/
+          # 移除Firefox特定配置
           cat manifest.json | jq 'del(.browser_specific_settings)' > chrome/manifest.json
           
       - name: Build Chrome extension
         run: |
           cd chrome
-          zip -r ../chrome-extension.zip *
-          cd ..
-          mv chrome-extension.zip douyin-live-parser-chrome.zip
+          zip -r ../douyin-live-parser-chrome.zip *
           
       - name: Prepare Firefox version  
         run: |
-          mkdir firefox
-          cp -r icons popup.html popup.js content.js lib firefox/
+          mkdir -p firefox
+          # 复制所有必要文件
+          cp -r icons firefox/
+          cp -r lib firefox/
+          cp -r _locales firefox/
+          cp popup.html firefox/
+          cp popup.js firefox/
+          cp content.js firefox/
           cp manifest.json firefox/
           
       - name: Build Firefox extension
@@ -61,6 +67,12 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
+          body: |
+            抖音直播直链解析浏览器扩展 ${{ github.ref }} 版本
+            
+            ### 安装说明
+            - Chrome版本: 下载douyin-live-parser-chrome.zip，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
+            - Firefox版本: 下载douyin-live-parser.xpi，直接拖放到Firefox中安装
           draft: false
           prerelease: false
           
@@ -83,3 +95,8 @@ jobs:
           asset_path: ./douyin-live-parser.xpi
           asset_name: douyin-live-parser.xpi
           asset_content_type: application/x-xpinstall
+
+      - name: Clean up
+        if: always()
+        run: |
+          rm -rf chrome firefox web-ext-artifacts

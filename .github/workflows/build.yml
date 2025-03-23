@@ -53,8 +53,7 @@ jobs:
         run: |
           cd firefox
           web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=unlisted
-          cd ..
-          find web-ext-artifacts -name "*.xpi" -type f -exec mv {} ./douyin-live-parser.xpi \;
+          mv web-ext-artifacts/*.xpi ../douyin-live-parser.xpi
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}

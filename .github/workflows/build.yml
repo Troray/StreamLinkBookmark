@@ -3,7 +3,7 @@ name: Build Extensions
 on:
   push:
     tags:
-      - 'v*' # 当推送v开头的tag时触发
+      - 'v*'
 
 jobs:
   build:
@@ -25,14 +25,12 @@ jobs:
       - name: Prepare Chrome version
         run: |
           mkdir -p chrome
-          # 复制所有必要文件
           cp -r icons chrome/
           cp -r lib chrome/
           cp -r _locales chrome/
           cp popup.html chrome/
           cp popup.js chrome/
           cp content.js chrome/
-          # 移除Firefox特定配置
           cat manifest.json | jq 'del(.browser_specific_settings)' > chrome/manifest.json
           
       - name: Build Chrome extension
@@ -43,7 +41,6 @@ jobs:
       - name: Prepare Firefox version  
         run: |
           mkdir -p firefox
-          # 复制所有必要文件
           cp -r icons firefox/
           cp -r lib firefox/
           cp -r _locales firefox/
@@ -52,17 +49,15 @@ jobs:
           cp content.js firefox/
           cp manifest.json firefox/
           
-      - name: Build Firefox extension
+      - name: Build and Sign Firefox Extension
         run: |
           cd firefox
-          # 指定输出文件名
-          web-ext build --artifacts-dir ../ --filename douyin-live-parser.xpi
+          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=unlisted
           cd ..
-          # 确保文件存在
-          if [ ! -f "douyin-live-parser.xpi" ]; then
-            echo "Firefox extension build failed"
-            exit 1
-          fi
+          mv web-ext-artifacts/*.xpi ./douyin-live-parser.xpi
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
           
       - name: Create Release
         id: create_release

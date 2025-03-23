@@ -20,7 +20,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          npm install --global web-ext
+          npm install --global web-ext@6.8.0
           
       - name: Prepare Chrome version
         run: |
@@ -58,7 +58,6 @@ jobs:
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-          NODE_OPTIONS: --no-experimental-fetch
           
       - name: Create Release
         id: create_release

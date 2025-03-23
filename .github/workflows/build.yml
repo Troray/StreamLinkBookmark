@@ -55,9 +55,14 @@ jobs:
       - name: Build Firefox extension
         run: |
           cd firefox
-          web-ext build --artifacts-dir ../
+          # 指定输出文件名
+          web-ext build --artifacts-dir ../ --filename douyin-live-parser.xpi
           cd ..
-          mv web-ext-artifacts/*.zip douyin-live-parser.xpi
+          # 确保文件存在
+          if [ ! -f "douyin-live-parser.xpi" ]; then
+            echo "Firefox extension build failed"
+            exit 1
+          fi
           
       - name: Create Release
         id: create_release

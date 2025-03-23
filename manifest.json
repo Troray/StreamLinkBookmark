@@ -13,7 +13,7 @@
   "default_locale": "zh_CN",
   "browser_specific_settings": {
     "gecko": {
-      "id": "douyin-live-parser@github.Troray",
+      "id": "{c7e0b5c0-b927-4f5b-8ab2-3bcd44b879df}",
       "strict_min_version": "109.0"
     }
   },

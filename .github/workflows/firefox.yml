@@ -12,15 +12,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Install web-ext
-        run: npm install --global web-ext@6.8.0 #或者移除版本限制 npm install --global web-ext
+        run: npm install --global web-ext@6.8.0
 
       - name: Prepare Firefox version
         run: |
@@ -40,7 +40,7 @@ jobs:
           mv web-ext-artifacts/*.xpi ../douyin-live-parser.xpi
         
       - name: Upload Firefox XPI as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: douyin-live-parser-firefox
           path: douyin-live-parser.xpi

@@ -37,7 +37,7 @@ jobs:
         run: |
           cd firefox
           web-ext build
-          mv web-ext-artifacts/*.xpi ../douyin-live-parser.xpi
+          mv web-ext-artifacts/*.zip ../douyin-live-parser.xpi
         
       - name: Upload Firefox XPI as artifact
         uses: actions/upload-artifact@v4

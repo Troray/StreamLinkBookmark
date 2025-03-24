@@ -221,6 +221,13 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!favorites.some(f => f.roomId === favorite.roomId)) {
         favorites.push(favorite);
         await browserAPI.storage.local.set({ favorites });
+        
+        // 立即更新按钮状态
+        addToFavorites.textContent = '已收藏';
+        addToFavorites.disabled = true;
+        addToFavorites.classList.remove('btn-outline-primary');
+        addToFavorites.classList.add('btn-secondary');
+        
         loadFavorites();
         showToast('已添加到我的收藏');
       } else {

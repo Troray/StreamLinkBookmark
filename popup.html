@@ -108,6 +108,12 @@
       position: relative;
       cursor: default;
     }
+    #addToFavorites[data-favorited="true"] {
+      background-color: #e9ecef;
+      border-color: #6c757d;
+      color: #6c757d;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -133,7 +139,7 @@
               <a id="streamerName" href="#" target="_blank" class="text-decoration-none" style="color: #333;"></a>
               <span class="ms-2 badge bg-success" id="userCount"></span>
             </div>
-            <button class="btn btn-outline-primary btn-sm" id="addToFavorites">收藏</button>
+            <button class="btn btn-outline-primary btn-sm" id="addToFavorites" data-favorited="false">收藏</button>
           </div>
           <div class="mb-2">
             <strong>直播标题：</strong>

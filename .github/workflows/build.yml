@@ -17,6 +17,33 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
       
+      - name: Verify required files
+        run: |
+          # 检查必需的文件和目录是否存在
+          required_files=(
+            "lib"
+            "image"
+            "image/iina.webp"
+            "image/potplayer.webp"
+            "image/vlc.webp"
+            "image/video.png"
+            "_locales"
+            "icons"
+            "icons/icon-48.png"
+            "icons/icon-96.png"
+            "content.js"
+            "popup.js"
+            "popup.html"
+            "manifest.json"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ ! -e "$file" ]; then
+              echo "Error: Required file/directory '$file' is missing"
+              exit 1
+            fi
+          done
+      
       - name: Create build directories
         run: |
           mkdir -p chrome firefox
@@ -44,44 +71,55 @@ jobs:
       - name: Create Chrome extension zip
         run: |
           cd chrome
-          zip -r ../douyin-live-helper-chrome-v${{ env.VERSION }}.zip *
+          zip -r ../Chrome.zip *
       
-      - name: Create Firefox extension zip
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      
+      - name: Install web-ext
+        run: npm install -g web-ext
+      
+      - name: Build and sign Firefox addon
+        working-directory: firefox
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
-          cd firefox
-          zip -r ../douyin-live-helper-firefox-v${{ env.VERSION }}.zip *
+          # 如果有AMO凭据，签名XPI文件
+          if [ -n "$WEB_EXT_API_KEY" ] && [ -n "$WEB_EXT_API_SECRET" ]; then
+            web-ext sign --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET
+            # 重命名为简洁命名
+            mv web-ext-artifacts/*.xpi ../Firefox.xpi
+          else
+            # 如果没有凭据，创建ZIP文件作为备选
+            cd ../firefox
+            zip -r ../Firefox.zip *
+            echo "警告: 没有提供AMO凭据，创建了ZIP文件而不是签名的XPI"
+          fi
+      
+      - name: Create Release Notes
+        run: |
+          cat > RELEASE_NOTES.md << EOL
+          ## 抖音直播直链解析浏览器扩展 `v${{ env.VERSION }}` 版本
+          
+          ### 安装说明
+          
+          - **Chrome版本**: 下载 `Chrome.zip`，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
+          - **Firefox版本**: 下载 `Firefox.xpi`，直接拖放到Firefox中安装
+          EOL
       
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            douyin-live-helper-chrome-v${{ env.VERSION }}.zip
-            douyin-live-helper-firefox-v${{ env.VERSION }}.zip
+            Chrome.zip
+            Firefox.xpi
+            Firefox.zip
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Verify required files
-        run: |
-          # 检查必需的文件和目录是否存在
-          required_files=(
-            "lib"
-            "image"
-            "_locales"
-            "icons"
-            "icons/icon-48.png"
-            "icons/icon-96.png"
-            "content.js"
-            "popup.js"
-            "popup.html"
-            "manifest.json"
-          )
-          
-          for file in "${required_files[@]}"; do
-            if [ ! -e "$file" ]; then
-              echo "Error: Required file/directory '$file' is missing"
-              exit 1
-            fi
-          done

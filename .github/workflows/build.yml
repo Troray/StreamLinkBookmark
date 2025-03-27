@@ -11,91 +11,53 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          
-      - name: Install dependencies
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      
+      - name: Create build directories
         run: |
-          npm install --global web-ext@6.8.0
-          
-      - name: Prepare Chrome version
+          mkdir -p chrome firefox
+      
+      - name: Copy files to build directories
         run: |
-          mkdir -p chrome
-          cp -r icons chrome/
-          cp -r lib chrome/
-          cp -r _locales chrome/
-          cp popup.html chrome/
-          cp popup.js chrome/
-          cp content.js chrome/
-          cat manifest.json | jq 'del(.browser_specific_settings)' > chrome/manifest.json
-          
-      - name: Build Chrome extension
+          # 复制通用文件到两个目录
+          for dir in chrome firefox; do
+            cp -r lib $dir/
+            cp -r image $dir/
+            cp -r _locales $dir/
+            cp content.js $dir/
+            cp popup.js $dir/
+            cp popup.html $dir/
+          done
+      
+      - name: Update version in manifest.json
+        run: |
+          # 更新 Chrome 版本的 manifest.json
+          cat manifest.json | jq '.version = env.VERSION' > chrome/manifest.json
+          # 更新 Firefox 版本的 manifest.json
+          cat manifest.json | jq '.version = env.VERSION' > firefox/manifest.json
+      
+      - name: Create Chrome extension zip
         run: |
           cd chrome
-          zip -r ../douyin-live-parser-chrome.zip *
-          
-      - name: Prepare Firefox version  
-        run: |
-          mkdir -p firefox
-          cp -r icons firefox/
-          cp -r lib firefox/
-          cp -r _locales firefox/
-          cp popup.html firefox/
-          cp popup.js firefox/
-          cp content.js firefox/
-          cp manifest.json firefox/
-          
-      - name: Build and Sign Firefox Extension
+          zip -r ../douyin-live-helper-chrome-v${{ env.VERSION }}.zip *
+      
+      - name: Create Firefox extension zip
         run: |
           cd firefox
-          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=unlisted
-          mv web-ext-artifacts/*.xpi ../douyin-live-parser.xpi
-        env:
-          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-          
+          zip -r ../douyin-live-helper-firefox-v${{ env.VERSION }}.zip *
+      
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            抖音直播直链解析浏览器扩展 `${{ github.ref_name }}` 版本
-            
-            ### 安装说明
-            - Chrome版本: 下载 `douyin-live-parser-chrome.zip`，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
-            - Firefox版本: 下载 `douyin-live-parser.xpi`，直接拖放到Firefox中安装
+          files: |
+            douyin-live-helper-chrome-v${{ env.VERSION }}.zip
+            douyin-live-helper-firefox-v${{ env.VERSION }}.zip
           draft: false
           prerelease: false
-          
-      - name: Upload Chrome Extension
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./douyin-live-parser-chrome.zip
-          asset_name: douyin-live-parser-chrome.zip
-          asset_content_type: application/zip
-          
-      - name: Upload Firefox Extension  
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./douyin-live-parser.xpi
-          asset_name: douyin-live-parser.xpi
-          asset_content_type: application/x-xpinstall
-
-      - name: Clean up
-        if: always()
-        run: |
-          rm -rf chrome firefox web-ext-artifacts

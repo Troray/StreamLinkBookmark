@@ -11,115 +11,93 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-      
-      - name: Verify required files
-        run: |
-          # 检查必需的文件和目录是否存在
-          required_files=(
-            "lib"
-            "image"
-            "image/iina.webp"
-            "image/potplayer.webp"
-            "image/vlc.webp"
-            "image/video.png"
-            "_locales"
-            "icons"
-            "icons/icon-48.png"
-            "icons/icon-96.png"
-            "content.js"
-            "popup.js"
-            "popup.html"
-            "manifest.json"
-          )
-          
-          for file in "${required_files[@]}"; do
-            if [ ! -e "$file" ]; then
-              echo "Error: Required file/directory '$file' is missing"
-              exit 1
-            fi
-          done
-      
-      - name: Create build directories
-        run: |
-          mkdir -p chrome firefox
-      
-      - name: Copy files to build directories
-        run: |
-          # 复制通用文件到两个目录
-          for dir in chrome firefox; do
-            cp -r lib $dir/
-            cp -r image $dir/
-            cp -r _locales $dir/
-            cp -r icons $dir/
-            cp content.js $dir/
-            cp popup.js $dir/
-            cp popup.html $dir/
-          done
-      
-      - name: Update version in manifest.json
-        run: |
-          # 更新 Chrome 版本的 manifest.json
-          cat manifest.json | jq 'del(.browser_specific_settings) | .version = env.VERSION' > chrome/manifest.json
-          # 更新 Firefox 版本的 manifest.json
-          cat manifest.json | jq '.version = env.VERSION' > firefox/manifest.json
-      
-      - name: Create Chrome extension zip
-        run: |
-          cd chrome
-          zip -r ../Chrome.zip *
+        uses: actions/checkout@v3
       
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
-      
-      - name: Install web-ext
-        run: npm install -g web-ext
-      
-      - name: Build and sign Firefox addon
-        working-directory: firefox
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install --global web-ext@6.8.0
+          
+      - name: Prepare Chrome version
+        run: |
+          mkdir -p chrome
+          cp -r icons chrome/
+          cp -r image chrome/
+          cp -r lib chrome/
+          cp -r _locales chrome/
+          cp popup.html chrome/
+          cp popup.js chrome/
+          cp content.js chrome/
+          cat manifest.json | jq 'del(.browser_specific_settings)' > chrome/manifest.json
+          
+      - name: Build Chrome extension
+        run: |
+          cd chrome
+          zip -r ../Chrome.zip *
+          
+      - name: Prepare Firefox version  
+        run: |
+          mkdir -p firefox
+          cp -r icons firefox/
+          cp -r image firefox/
+          cp -r lib firefox/
+          cp -r _locales firefox/
+          cp popup.html firefox/
+          cp popup.js firefox/
+          cp content.js firefox/
+          cp manifest.json firefox/
+          
+      - name: Build and Sign Firefox Extension
+        run: |
+          cd firefox
+          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=unlisted
+          mv web-ext-artifacts/*.xpi ../Firefox.xpi
         env:
-          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
-          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-        run: |
-          # 如果有AMO凭据，签名XPI文件
-          if [ -n "$WEB_EXT_API_KEY" ] && [ -n "$WEB_EXT_API_SECRET" ]; then
-            web-ext sign --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET
-            # 重命名为简洁命名
-            mv web-ext-artifacts/*.xpi ../Firefox.xpi
-          else
-            # 如果没有凭据，创建ZIP文件作为备选
-            cd ../firefox
-            zip -r ../Firefox.zip *
-            echo "警告: 没有提供AMO凭据，创建了ZIP文件而不是签名的XPI"
-          fi
-      
-      - name: Create Release Notes
-        run: |
-          cat > RELEASE_NOTES.md << EOL
-          ## 抖音直播直链解析浏览器扩展 `v${{ env.VERSION }}` 版本
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
           
-          ### 安装说明
-          
-          - **Chrome版本**: 下载 `Chrome.zip`，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
-          - **Firefox版本**: 下载 `Firefox.xpi`，直接拖放到Firefox中安装
-          EOL
-      
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            Chrome.zip
-            Firefox.xpi
-            Firefox.zip
-          body_path: RELEASE_NOTES.md
-          draft: false
-          prerelease: false
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            抖音直播直链解析浏览器扩展 `${{ github.ref_name }}` 版本
+            
+            ### 安装说明
+            - Chrome版本: 下载 `Chrome.zip` ，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
+            - Firefox版本: 下载 `Firefox.xpi`，直接拖放到Firefox中安装
+          draft: false
+          prerelease: false
+          
+      - name: Upload Chrome Extension
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Chrome.zip
+          asset_name: Chrome.zip
+          asset_content_type: application/zip
+          
+      - name: Upload Firefox Extension  
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Firefox.xpi
+          asset_name: Firefox.xpi
+          asset_content_type: application/x-xpinstall
+
+      - name: Clean up
+        if: always()
+        run: |
+          rm -rf chrome firefox web-ext-artifacts

@@ -48,9 +48,9 @@
     }
     .copy-toast {
       position: fixed;
-      bottom: 20px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%);
       background-color: rgba(33, 37, 41, 0.85);
       color: white;
       padding: 8px 16px;
@@ -59,6 +59,7 @@
       z-index: 9999;
       opacity: 0;
       transition: opacity 0.3s ease-in-out;
+      white-space: nowrap;
     }
     .copy-toast.show {
       opacity: 1;
@@ -100,7 +101,7 @@
       z-index: 1000;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.2s;
+      transition: opacity 0.3s ease;  /* 增加过渡时间 */
       white-space: nowrap;
     }
 
@@ -114,72 +115,212 @@
       color: #6c757d;
       cursor: not-allowed;
     }
+    /* 修改角标样式 */
+    .quality-badge {
+      position: absolute;
+      top: -6px;
+      right: 0px;
+      font-weight: bold;
+      font-size: 8px;
+      background-color: #20a0ff;
+      color: white;
+      padding: 2px 4px;
+      border-radius: 8px;
+      line-height: 1;
+      z-index: 1;
+    }
+
+    .type-label {
+      position: relative;
+      display: inline-block;
+    }
+    
+    /* 修改header样式 */
+    .header {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+    
+    /* 添加nav-container样式 */
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    
+    .nav-container .nav {
+      flex-grow: 1;
+    }
+    
+    .settings-button {
+      cursor: pointer;
+      font-size: 20px;
+      margin-left: 10px;
+    }
+    
+    .settings-container {
+      display: none;  /* 默认隐藏 */
+    }
+    
+    .player-options {
+      margin-bottom: 20px;
+    }
+    
+    .player-option {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .player-option:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .player-option.selected {
+      background-color: #e9ecef;
+    }
+    
+    .player-option img {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+    
+    .custom-protocol {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+    }
+    
+    .custom-protocol .input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .custom-protocol .form-control {
+      width: 80%;
+    }
+    
+    .custom-protocol .btn {
+      white-space: nowrap;
+    }
+    
+    .player-icon {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    
+    /* 添加back-button样式 */
+    .back-button {
+      display: none;  /* 默认隐藏 */
+      cursor: pointer;  /* 显示手型光标 */
+      font-size: 20px;
+      padding: 5px;  /* 添加内边距，使点击区域更明确 */
+      line-height: 1;  /* 设置行高为1，避免额外空间 */
+      width: 20px;    /* 设置固定宽度 */
+      text-align: center;  /* 文本居中 */
+    }
   </style>
 </head>
 <body>
   <div class="container-fluid">
-    <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="parse-tab" data-bs-toggle="tab" data-bs-target="#parse" type="button" role="tab" aria-controls="parse" aria-selected="true">直播解析</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="favorites-tab" data-bs-toggle="tab" data-bs-target="#favorites" type="button" role="tab" aria-controls="favorites" aria-selected="false">我的收藏</button>
-      </li>
-    </ul>
-    <div class="tab-content" id="mainTabContent">
-      <div class="tab-pane fade show active" id="parse" role="tabpanel" aria-labelledby="parse-tab">
-        <div class="input-group mb-3">
-          <input type="text" id="roomInput" class="form-control" placeholder="请输入房间号或直播间链接" autocomplete="off">
-          <button class="btn btn-primary" id="parseBtn">解析</button>
-        </div>
-        <div id="result" class="d-none">
-          <div class="mb-3 d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-              <img id="streamerAvatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
-              <a id="streamerName" href="#" target="_blank" class="text-decoration-none" style="color: #333;"></a>
-              <span class="ms-2 badge bg-success" id="userCount"></span>
-            </div>
-            <button class="btn btn-outline-primary btn-sm" id="addToFavorites" data-favorited="false">收藏</button>
-          </div>
-          <div class="mb-2">
-            <strong>直播标题：</strong>
-            <span id="streamTitle"></span>
-          </div>
-          <div class="mb-2">
-            <strong>直播流地址：</strong>
-          </div>
-          <div id="streamLinks" class="list-group">
-          </div>
-        </div>
-        <div id="error" class="alert alert-danger d-none" role="alert"></div>
+    <!-- 返回按钮单独放在顶部 -->
+    <div class="header">
+      <span class="back-button">←</span>
+    </div>
+    
+    <div class="main-content">
+      <!-- 将导航和设置按钮放在同一行 -->
+      <div class="nav-container">
+        <ul class="nav nav-tabs mb-0" id="mainTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="parse-tab" data-bs-toggle="tab" data-bs-target="#parse" type="button" role="tab" aria-controls="parse" aria-selected="true">直播解析</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="favorites-tab" data-bs-toggle="tab" data-bs-target="#favorites" type="button" role="tab" aria-controls="favorites" aria-selected="false">我的收藏</button>
+          </li>
+        </ul>
+        <span class="settings-button">⚙️</span>
       </div>
-      <div class="tab-pane fade" id="favorites" role="tabpanel" aria-labelledby="favorites-tab">
-        <div class="d-flex justify-content-end mb-2">
-          <button class="btn btn-outline-primary btn-sm py-1" id="checkAllStatus" style="font-size: 12px;">
-            <span class="check-status-text">检测直播状态</span>
-            <span class="spinner-border spinner-border-sm d-none" role="status" style="width: 0.8rem; height: 0.8rem;"></span>
-          </button>
+      
+      <div class="tab-content" id="mainTabContent">
+        <div class="tab-pane fade show active" id="parse" role="tabpanel" aria-labelledby="parse-tab">
+          <div class="input-group mb-3">
+            <input type="text" id="roomInput" class="form-control" placeholder="请输入房间号或直播间链接" autocomplete="off">
+            <button class="btn btn-primary" id="parseBtn">解析</button>
+          </div>
+          <div id="result" class="d-none">
+            <div class="mb-3 d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <img id="streamerAvatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
+                <a id="streamerName" href="#" target="_blank" class="text-decoration-none" style="color: #333;"></a>
+                <span class="ms-2 badge bg-success" id="userCount"></span>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" id="addToFavorites" data-favorited="false">收藏</button>
+            </div>
+            <div class="mb-2">
+              <strong>直播标题：</strong>
+              <span id="streamTitle"></span>
+            </div>
+            <div class="mb-2">
+              <strong>直播流地址：</strong>
+            </div>
+            <div id="streamLinks" class="list-group">
+            </div>
+          </div>
+          <div id="error" class="alert alert-danger d-none" role="alert"></div>
         </div>
-        <div id="favoritesList" class="list-group">
-          <!-- 常用直播间列表将通过JavaScript动态添加 -->
-        </div>
-        <div id="noFavorites" class="text-center text-muted mt-3 d-none">
-          <p>暂无收藏</p>
+        <div class="tab-pane fade" id="favorites" role="tabpanel" aria-labelledby="favorites-tab">
+          <div class="d-flex justify-content-end mb-2">
+            <button class="btn btn-outline-primary btn-sm py-1" id="checkAllStatus" style="font-size: 12px;">
+              <span class="check-status-text">检测直播状态</span>
+              <span class="spinner-border spinner-border-sm d-none" role="status" style="width: 0.8rem; height: 0.8rem;"></span>
+            </button>
+          </div>
+          <div id="favoritesList" class="list-group">
+            <!-- 常用直播间列表将通过JavaScript动态添加 -->
+          </div>
+          <div id="noFavorites" class="text-center text-muted mt-3 d-none">
+            <p>暂无收藏</p>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- 添加开发者信息 -->
-    <!-- <div class="text-center mt-3" style="font-size: 12px; color: #6c757d;">
-      <span>开发者：</span>
-      <a href="https://github.com/你的用户名" target="_blank" style="color: inherit; text-decoration: none;">
-        你的名字
-      </a>
-      <span class="mx-1">|</span>
-      <a href="https://github.com/你的用户名/项目名" target="_blank" style="color: inherit; text-decoration: none;">
-        GitHub
-      </a>
-    </div> -->
+    <div class="settings-container">
+      <h5 class="mb-3">选择要调用的播放器</h5>
+      <div class="player-options">
+        <div class="player-option" data-player="potplayer">
+          <img src="image/potplayer.webp" alt="PotPlayer">
+          <span>Pot Player</span>
+        </div>
+        <div class="player-option" data-player="vlc">
+          <img src="image/vlc.webp" alt="VLC">
+          <span>VLC</span>
+        </div>
+        <div class="player-option" data-player="iina">
+          <img src="image/iina.webp" alt="IINA">
+          <span>IINA</span>
+        </div>
+      </div>
+      
+      <h5 class="mb-3">自定义调用播放器</h5>
+      <div class="custom-protocol">
+        <div class="input-group">
+          <input type="text" class="form-control" id="customProtocol" placeholder="输入自定义协议">
+          <button class="btn btn-primary" id="saveProtocol">确定</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="popup.js"></script>
 </body>

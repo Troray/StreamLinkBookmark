@@ -40,6 +40,165 @@ document.addEventListener('DOMContentLoaded', function() {
     const noFavorites = document.getElementById('noFavorites');
     const checkAllStatus = document.getElementById('checkAllStatus');
 
+    // 新增变量
+    const backButton = document.querySelector('.back-button');
+    const settingsButton = document.querySelector('.settings-button');
+    const settingsContainer = document.querySelector('.settings-container');
+    const mainContent = document.querySelector('.main-content');
+    const playerOptions = document.querySelectorAll('.player-option');
+    const customProtocolInput = document.getElementById('customProtocol');
+    const saveProtocolBtn = document.getElementById('saveProtocol');
+    
+    // 播放器配置
+    const defaultPlayers = {
+      potplayer: {
+        protocol: 'potplayer://',
+        icon: 'image/potplayer.webp'
+      },
+      vlc: {
+        protocol: 'vlc://',
+        icon: 'image/vlc.webp'
+      },
+      iina: {
+        protocol: 'iina://weblink?url=',
+        icon: 'image/iina.webp'
+      },
+      custom: {
+        protocol: '',
+        icon: 'image/video.png'
+      }
+    };
+    
+    // 添加到popup.js开头部分，作为全局变量
+    let activeTooltip = null;
+    let tooltipTimeout = null;
+
+    // 修改showTooltip函数，支持跟随鼠标位置
+    function showTooltip(target, text, event = null, followMouse = false) {
+      // 清除已存在的tooltip和超时
+      hideTooltip();
+      
+      const tooltip = document.createElement('div');
+      tooltip.className = 'custom-tooltip';
+      tooltip.textContent = text;
+      
+      // 如果提供了鼠标事件，使用鼠标位置
+      if (event && followMouse) {
+        tooltip.style.top = `${event.clientY + 15}px`;
+        tooltip.style.left = `${event.clientX}px`;
+        // 给tooltip添加数据属性，标记为跟随鼠标
+        tooltip.dataset.followMouse = 'true';
+      } else {
+        // 否则使用目标元素位置
+        const rect = target.getBoundingClientRect();
+        tooltip.style.top = `${rect.bottom + 5}px`;
+        tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
+        tooltip.style.transform = 'translateX(-50%)';
+      }
+      
+      document.body.appendChild(tooltip);
+      
+      // 强制重绘并显示
+      tooltip.offsetHeight;
+      tooltip.style.opacity = '1';
+      
+      // 保存当前tooltip引用
+      activeTooltip = tooltip;
+      
+      return tooltip;
+    }
+
+    // 添加一个新的moveTooltip函数，用于跟随鼠标移动
+    function moveTooltip(event) {
+      if (activeTooltip && activeTooltip.dataset.followMouse === 'true') {
+        activeTooltip.style.top = `${event.clientY + 15}px`;
+        activeTooltip.style.left = `${event.clientX}px`;
+      }
+    }
+
+    // 隐藏tooltip的通用函数
+    function hideTooltip() {
+      // 清除任何现有的超时
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = null;
+      }
+      
+      // 如果有活动的tooltip，移除它
+      if (activeTooltip) {
+        activeTooltip.style.opacity = '0';
+        const tooltipToRemove = activeTooltip;
+        tooltipTimeout = setTimeout(() => {
+          if (tooltipToRemove && tooltipToRemove.parentNode) {
+            tooltipToRemove.parentNode.removeChild(tooltipToRemove);
+          }
+        }, 300); // 300ms的过渡时间
+        activeTooltip = null;
+      }
+      
+      // 移除所有可能残留的tooltip
+      document.querySelectorAll('.custom-tooltip').forEach(el => {
+        el.style.opacity = '0';
+        setTimeout(() => {
+          if (el && el.parentNode) {
+            el.parentNode.removeChild(el);
+          }
+        }, 300);
+      });
+    }
+
+    // 加载设置
+    async function loadSettings() {
+      const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+      const result = await browserAPI.storage.local.get(['selectedPlayer', 'customProtocol']);
+      
+      // 设置默认选中的播放器
+      const selectedPlayer = result.selectedPlayer || 'potplayer';
+      playerOptions.forEach(option => {
+        if (option.dataset.player === selectedPlayer) {
+          option.classList.add('selected');
+        }
+      });
+      
+      // 设置自定义协议
+      if (result.customProtocol) {
+        customProtocolInput.value = result.customProtocol;
+      }
+    }
+    
+    // 保存设置
+    async function saveSettings(player, protocol) {
+      const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+      
+      // 如果选择了预置播放器且没有自定义协议，清除customProtocol
+      if (player && !protocol) {
+        await browserAPI.storage.local.set({
+          selectedPlayer: player,
+          customProtocol: ''  // 清除自定义协议
+        });
+        
+        // 更新所有播放器图标为选中的预置播放器图标
+        document.querySelectorAll('.player-icon').forEach(icon => {
+          icon.src = defaultPlayers[player].icon;
+        });
+      } else {
+        // 保存自定义协议设置
+        await browserAPI.storage.local.set({
+          selectedPlayer: player,
+          customProtocol: protocol
+        });
+        
+        // 如果有自定义协议，更新所有图标为通用图标
+        if (protocol) {
+          document.querySelectorAll('.player-icon').forEach(icon => {
+            icon.src = defaultPlayers.custom.icon;
+          });
+        }
+      }
+      
+      showToast('设置已保存');
+    }
+
     // 点击解析按钮
     parseBtn.addEventListener('click', () => {
       const input = roomInput.value.trim();
@@ -112,28 +271,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 添加鼠标事件处理
             statusBadge.addEventListener('mouseenter', (e) => {
-              const tooltip = document.createElement('div');
-              tooltip.className = 'custom-tooltip';
-              tooltip.textContent = statusBadge.dataset.status || '未检测';
-              
-              // 计算位置
-              const rect = e.target.getBoundingClientRect();
-              tooltip.style.top = `${rect.bottom + 5}px`;
-              tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
-              tooltip.style.transform = 'translateX(-50%)';
-              
-              document.body.appendChild(tooltip);
-              // 强制重绘
-              tooltip.offsetHeight;
-              tooltip.style.opacity = '1';
+              showTooltip(e.target, statusBadge.dataset.status || '未检测');
             });
 
             statusBadge.addEventListener('mouseleave', () => {
-              const tooltip = document.querySelector('.custom-tooltip');
-              if (tooltip) {
-                tooltip.style.opacity = '0';
-                setTimeout(() => tooltip.remove(), 200);
-              }
+              hideTooltip();
             });
             
             nameRow.appendChild(name);
@@ -246,10 +388,13 @@ document.addEventListener('DOMContentLoaded', function() {
       showToast('已从我的收藏移除');
     }
 
-    // 显示提示信息
-    function showToast(message) {
+    // 修改showToast函数
+    function showToast(message, isError = false) {
       const toast = document.createElement('div');
       toast.className = 'copy-toast';
+      if (isError) {
+        toast.style.backgroundColor = 'rgba(220, 53, 69, 0.9)'; // 错误提示使用红色背景
+      }
       toast.textContent = message;
       document.body.appendChild(toast);
       
@@ -257,10 +402,13 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.classList.add('show');
       });
       
+      // 错误提示显示时间更长 (5秒)，普通提示仍为2秒
+      const displayTime = isError ? 5000 : 2000;
+      
       setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
-      }, 2000);
+      }, displayTime);
     }
 
     // 从URL中提取房间号
@@ -306,39 +454,213 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
-    // 修改createStreamLinkElement函数，为不同格式设置不同颜色
-    function createStreamLinkElement(quality, url, format) {
-      const div = document.createElement('div');
-      div.className = 'list-group-item d-flex justify-content-between align-items-center stream-link';
-      div.style.cssText = 'white-space: nowrap; overflow: hidden;';
+    // 添加检查协议是否可用的函数
+    async function checkProtocolSupport(protocol) {
+      return new Promise((resolve) => {
+        // 创建一个隐藏的iframe来测试协议
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        
+        // 设置超时检测
+        const timeoutId = setTimeout(() => {
+          document.body.removeChild(iframe);
+          resolve(false);
+        }, 100);
+        
+        // 监听iframe的加载事件
+        iframe.onload = () => {
+          clearTimeout(timeoutId);
+          document.body.removeChild(iframe);
+          resolve(true);
+        };
+        
+        // 尝试加载协议
+        try {
+          iframe.src = protocol + 'about:blank';
+        } catch(e) {
+          clearTimeout(timeoutId);
+          document.body.removeChild(iframe);
+          resolve(false);
+        }
+      });
+    }
+
+    // 修改createStreamLinkElement函数
+    function createStreamLinkElement(quality, url, type) {
+      const item = document.createElement('div');
+      item.className = 'list-group-item stream-link d-flex align-items-center py-2';
       
-      const qualitySpan = document.createElement('span');
-      qualitySpan.className = 'badge bg-primary me-2';
-      qualitySpan.textContent = quality;
+      // 创建一个简短的清晰度标识
+      let shortQuality = '';
+      switch(quality) {
+        case '蓝光': shortQuality = '蓝'; break;
+        case '超清': shortQuality = '超'; break;
+        case '高清': shortQuality = '高'; break;
+        case '标清': shortQuality = '标'; break;
+        default: shortQuality = quality.charAt(0);
+      }
       
-      const formatSpan = document.createElement('span');
-      // 为不同格式设置不同的颜色
-      formatSpan.className = `badge me-2 ${format === 'FLV' ? 'bg-info' : 'bg-success'}`;
-      formatSpan.textContent = format;
+      // 类型标签容器
+      const typeLabelContainer = document.createElement('div');
+      typeLabelContainer.className = 'type-label';
       
-      const linkSpan = document.createElement('span');
-      linkSpan.className = 'flex-grow-1 mx-2';
-      linkSpan.style.cssText = 'text-overflow: ellipsis; overflow: hidden;';
-      linkSpan.title = url;
-      linkSpan.textContent = url;
+      // 为类型标签添加tooltip
+      typeLabelContainer.addEventListener('mouseenter', () => {
+        showTooltip(typeLabelContainer, quality);
+      });
+
+      typeLabelContainer.addEventListener('mouseleave', () => {
+        hideTooltip();
+      });
       
-      const copyIcon = document.createElement('img');
-      copyIcon.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktY2xpcGJvYXJkIiB2aWV3Qm94PSIwIDAgMTYgMTYiPjxwYXRoIGQ9Ik00IDFhMSAxIDAgMCAxIDEtMWg1YTEgMSAwIDAgMSAxIDF2MWgyYTEgMSAwIDAgMSAxIDF2MTJhMSAxIDAgMCAxLTEgMUgzYTEgMSAwIDAgMS0xLTFWM2ExIDEgMCAwIDEgMS0xaDJ2LTF6bTIgMGgzdjFINlYxem03IDN2MTBIMy4wMDFWNEgxM3ptLTktMUg0djFIMlYzaDJ6Ii8+PC9zdmc+';
-      copyIcon.className = 'copy-icon';
-      copyIcon.title = '复制链接';
-      copyIcon.onclick = () => copyToClipboard(url);
+      // 类型标签 - 使用自定义背景色
+      const typeLabel = document.createElement('span');
+      typeLabel.className = 'badge me-2';
+      typeLabel.textContent = type;
       
-      div.appendChild(qualitySpan);
-      div.appendChild(formatSpan);
-      div.appendChild(linkSpan);
-      div.appendChild(copyIcon);
+      // 为FLV和HLS设置自定义背景色
+      if (type === 'FLV') {
+        typeLabel.style.backgroundColor = 'rgb(50, 112, 122)';
+      } else {
+        typeLabel.style.backgroundColor = 'rgb(25, 170, 194)';
+      }
+      typeLabel.style.color = 'white';
       
-      return div;
+      // 创建角标
+      const badge = document.createElement('span');
+      badge.className = 'quality-badge';
+      badge.textContent = shortQuality;
+      
+      // URL显示
+      const urlSpan = document.createElement('span');
+      urlSpan.className = 'flex-grow-1 ms-2';
+      urlSpan.textContent = url;
+      urlSpan.style.cursor = 'pointer';
+      
+      // 为URL添加自定义tooltip，跟随鼠标
+      urlSpan.addEventListener('mouseenter', (e) => {
+        showTooltip(urlSpan, '点击复制', e, true);
+      });
+      
+      // 添加鼠标移动事件
+      urlSpan.addEventListener('mousemove', (e) => {
+        moveTooltip(e);
+      });
+      
+      urlSpan.addEventListener('mouseleave', () => {
+        hideTooltip();
+      });
+      
+      // 点击链接复制
+      urlSpan.onclick = () => {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('已复制到剪贴板');
+        });
+      };
+      
+      // 播放器图标
+      const playerIcon = document.createElement('img');
+      playerIcon.className = 'player-icon ms-2';
+      const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+      browserAPI.storage.local.get(['selectedPlayer', 'customProtocol']).then(result => {
+        const player = result.selectedPlayer || 'potplayer';
+        if (result.customProtocol) {
+          playerIcon.src = defaultPlayers.custom.icon;
+        } else {
+          playerIcon.src = defaultPlayers[player].icon;
+        }
+      });
+      
+      // 为播放器图标添加自定义tooltip
+      playerIcon.addEventListener('mouseenter', () => {
+        showTooltip(playerIcon, '播放');
+      });
+      
+      playerIcon.addEventListener('mouseleave', () => {
+        hideTooltip();
+      });
+      
+      // 点击图标调用播放器
+      playerIcon.onclick = async (event) => {
+        event.preventDefault(); // 阻止默认行为
+        
+        const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+        const result = await browserAPI.storage.local.get(['selectedPlayer', 'customProtocol']);
+        const protocol = result.customProtocol || defaultPlayers[result.selectedPlayer || 'potplayer'].protocol;
+        
+        // 创建一个安全的方式来尝试启动协议
+        const protocolFrame = document.createElement('iframe');
+        protocolFrame.style.display = 'none';
+        document.body.appendChild(protocolFrame);
+        
+        // 设置超时检测
+        let handleFrameError = null;
+        const protocolTimeoutId = setTimeout(() => {
+          // 如果超时，说明协议可能不被支持
+          cleanupProtocolCheck();
+          showToast(`播放器未安装或不支持此协议，请检查设置`, true);
+        }, 1000);
+        
+        // 处理错误
+        const handleError = () => {
+          cleanupProtocolCheck();
+          showToast(`播放器未安装或不支持此协议，请检查设置`, true);
+        };
+        
+        // 处理成功
+        const handleSuccess = () => {
+          cleanupProtocolCheck();
+          showToast('已发送到播放器');
+        };
+        
+        // 清理函数
+        const cleanupProtocolCheck = () => {
+          clearTimeout(protocolTimeoutId);
+          window.removeEventListener('blur', handleBlur);
+          if (protocolFrame.parentNode) {
+            document.body.removeChild(protocolFrame);
+          }
+        };
+        
+        // 如果窗口失去焦点，可能意味着协议处理程序已启动
+        const handleBlur = () => {
+          setTimeout(() => {
+            cleanupProtocolCheck();
+          }, 500);
+        };
+        
+        // 监听窗口焦点变化
+        window.addEventListener('blur', handleBlur);
+        
+        try {
+          // 设置焦点监听来检测协议是否被处理
+          showToast('正在尝试启动播放器...');
+          
+          // 使用iframe安全地尝试启动协议
+          protocolFrame.src = protocol + url;
+          
+          // 如果到这里没有出错或窗口没有失焦，在短暂延迟后检查
+          setTimeout(() => {
+            if (document.hasFocus()) {
+              // 如果窗口仍有焦点，可能协议没被处理
+              handleError();
+            }
+          }, 500);
+        } catch (e) {
+          handleError();
+        }
+      };
+      
+      // 将元素添加到列表项
+      typeLabelContainer.appendChild(typeLabel);
+      typeLabelContainer.appendChild(badge);
+      
+      item.appendChild(typeLabelContainer);
+      item.appendChild(urlSpan);
+      item.appendChild(playerIcon);
+      
+      return item;
     }
 
     // 添加检查是否已收藏的函数
@@ -536,6 +858,54 @@ document.addEventListener('DOMContentLoaded', function() {
       checkAllLiveStatus();
     });
 
+    // 设置按钮点击事件
+    settingsButton.addEventListener('click', () => {
+      mainContent.style.display = 'none';
+      settingsContainer.style.display = 'block';
+      backButton.style.display = 'block';
+      loadSettings();
+    });
+    
+    // 返回按钮点击事件
+    backButton.addEventListener('click', () => {
+      settingsContainer.style.display = 'none';
+      mainContent.style.display = 'block';
+      backButton.style.display = 'none';
+    });
+    
+    // 播放器选择事件
+    playerOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        // 移除所有选中状态
+        playerOptions.forEach(opt => opt.classList.remove('selected'));
+        // 添加新的选中状态
+        option.classList.add('selected');
+        
+        // 清除自定义协议输入框的值
+        customProtocolInput.value = '';
+        
+        // 保存设置（不包含自定义协议）
+        saveSettings(option.dataset.player, '');
+        
+        // 更新所有播放器图标为选中的预置播放器图标
+        document.querySelectorAll('.player-icon').forEach(icon => {
+          icon.src = defaultPlayers[option.dataset.player].icon;
+        });
+      });
+    });
+    
+    // 保存自定义协议按钮点击事件
+    saveProtocolBtn.addEventListener('click', () => {
+      const selectedPlayer = document.querySelector('.player-option.selected');
+      const protocol = customProtocolInput.value.trim();
+      
+      if (selectedPlayer && protocol) {
+        saveSettings(selectedPlayer.dataset.player, protocol);
+      } else if (!protocol) {
+        showToast('请输入自定义协议');
+      }
+    });
+    
     // 初始化加载常用直播间
     loadFavorites();
 
@@ -579,6 +949,24 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }).catch(err => {
       console.error('获取当前标签页失败:', err);
+    });
+
+    // 添加全局事件监听器，确保tooltip能被清理
+    document.addEventListener('mousemove', (e) => {
+      // 如果鼠标移动过快，确保所有tooltip的mouseleave事件能被正确处理
+      const tooltips = document.querySelectorAll('.custom-tooltip');
+      const isOverTooltip = Array.from(tooltips).some(tooltip => 
+        tooltip.contains(e.target) || e.target.contains(tooltip));
+      
+      if (!isOverTooltip && tooltips.length > 0) {
+        setTimeout(() => {
+          // 检查2秒后是否还有tooltip，如果有则清理
+          document.querySelectorAll('.custom-tooltip').forEach(el => {
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 200);
+          });
+        }, 2000);
+      }
     });
   } catch (err) {
     console.error('初始化失败:', err);

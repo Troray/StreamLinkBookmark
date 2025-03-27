@@ -52,7 +52,7 @@ jobs:
       - name: Build and Sign Firefox Extension
         run: |
           cd firefox
-          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=listed
+          web-ext sign --api-key=${{ secrets.AMO_JWT_ISSUER }} --api-secret=${{ secrets.AMO_JWT_SECRET }} --channel=unlisted
           mv web-ext-artifacts/*.xpi ../douyin-live-parser.xpi
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
@@ -70,8 +70,8 @@ jobs:
             抖音直播直链解析浏览器扩展 `${{ github.ref_name }}` 版本
             
             ### 安装说明
-            - Chrome版本: 下载douyin-live-parser-chrome.zip，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
-            - Firefox版本: 下载douyin-live-parser.xpi，直接拖放到Firefox中安装
+            - Chrome版本: 下载 `douyin-live-parser-chrome.zip`，解压后在扩展管理页面通过"加载已解压的扩展程序"安装
+            - Firefox版本: 下载 `douyin-live-parser.xpi`，直接拖放到Firefox中安装
           draft: false
           prerelease: false
           

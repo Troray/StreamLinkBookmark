@@ -28,6 +28,7 @@ jobs:
             cp -r lib $dir/
             cp -r image $dir/
             cp -r _locales $dir/
+            cp -r icons $dir/
             cp content.js $dir/
             cp popup.js $dir/
             cp popup.html $dir/
@@ -36,7 +37,7 @@ jobs:
       - name: Update version in manifest.json
         run: |
           # 更新 Chrome 版本的 manifest.json
-          cat manifest.json | jq '.version = env.VERSION' > chrome/manifest.json
+          cat manifest.json | jq 'del(.browser_specific_settings) | .version = env.VERSION' > chrome/manifest.json
           # 更新 Firefox 版本的 manifest.json
           cat manifest.json | jq '.version = env.VERSION' > firefox/manifest.json
       
@@ -61,3 +62,26 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify required files
+        run: |
+          # 检查必需的文件和目录是否存在
+          required_files=(
+            "lib"
+            "image"
+            "_locales"
+            "icons"
+            "icons/icon-48.png"
+            "icons/icon-96.png"
+            "content.js"
+            "popup.js"
+            "popup.html"
+            "manifest.json"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ ! -e "$file" ]; then
+              echo "Error: Required file/directory '$file' is missing"
+              exit 1
+            fi
+          done
